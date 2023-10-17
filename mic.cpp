@@ -1,5 +1,7 @@
 #include "mic.h"
 
+#include <algorithm>
+
 #include <atlbase.h>
 #include <mmdeviceapi.h>
 #include <endpointvolume.h>
@@ -45,12 +47,12 @@ public:
 
     void IncVol()
     {
-        ChangeVol(.02);
+        ChangeVol(.02f);
     }
 
     void DecVol()
     {
-        ChangeVol(-.02);
+        ChangeVol(-.02f);
     }
 
 private:
@@ -58,7 +60,7 @@ private:
     {
         float currentVolume;
         ATLENSURE_SUCCEEDED(m_endpointVolume->GetMasterVolumeLevelScalar(&currentVolume));
-        ATLENSURE_SUCCEEDED(m_endpointVolume->SetMasterVolumeLevelScalar(currentVolume + delta, nullptr));
+        ATLENSURE_SUCCEEDED(m_endpointVolume->SetMasterVolumeLevelScalar(std::clamp (currentVolume + delta, 0.f, 1.f), nullptr));
     }
 
 private:
