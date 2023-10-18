@@ -1,56 +1,48 @@
 #include "mic.h"
 #include "knob.h"
 
-auto Swallow (auto fun)
+#include "error_handling.h"
+
+auto SwallowEveryTime (auto fun)
 {
     return [fun = std::move (fun)]() noexcept
         {
-            try
-            {
-                fun();
-            }
-            catch(...)
-            {
-                // TODO: Trace something
-            }
+            IgnoreException (fun);
         };
 }
 
 int main()
 {
-    try
-    {
-        Mic mic;
-        Knob knob;
+    const bool res = DispatchException (
+        []()
+        {
+            Mic mic;
+            Knob knob;
 
-        knob.SetPushHandler (Swallow(
-            [&]()
-            {
-                mic.ToggleMute();
-            }
-        ));
+            knob.SetPushHandler (SwallowEveryTime(
+                [&]()
+                {
+                    mic.ToggleMute();
+                }
+            ));
 
-        knob.SetSpinLeftHandler (Swallow(
-            [&]()
-            {
-                mic.DecVol();
-            }
-        ));
+            knob.SetSpinLeftHandler (SwallowEveryTime(
+                [&]()
+                {
+                    mic.DecVol();
+                }
+            ));
 
-        knob.SetSpinRightHandler (Swallow(
-            [&]()
-            {
-                mic.IncVol();
-            }
-        ));
+            knob.SetSpinRightHandler (SwallowEveryTime(
+                [&]()
+                {
+                    mic.IncVol();
+                }
+            ));
 
-        knob.Loop();
-
-        return EXIT_SUCCESS; 
-    }
-    catch (...)
-    {
-        // TODO: Trace something
-        return EXIT_FAILURE;
-    }
+            knob.Loop();
+       }
+    );
+ 
+    return res ? EXIT_SUCCESS : EXIT_FAILURE;
 }
