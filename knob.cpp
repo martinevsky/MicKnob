@@ -34,9 +34,7 @@ void ThrowGleErrorIfFalse (bool val, const char* msg, std::source_location locat
             virtual void Format (std::ostream& os) const override
             {
                 char err[256] = {};
-                const auto errSize = ::FormatMessage (FORMAT_MESSAGE_FROM_SYSTEM, nullptr, m_gle, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), err, std::size (err) - 1, nullptr);
-                if (errSize > 2)
-                    err[errSize - 2] = '\0'; // Clear '\n' at the end
+                ::FormatMessage (FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_MAX_WIDTH_MASK, nullptr, m_gle, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), err, std::size (err) - 1, nullptr);
                 os << "0x" << std::hex << m_gle << std::dec << " - \"" << err << '"'; 
             }
 
