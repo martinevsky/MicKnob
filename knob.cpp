@@ -2,20 +2,12 @@
 
 #include <utility>
 #include <ostream>
+#include <optional>
 
 #include <atlbase.h>
 #include <atlwin.h>
 
 #include "error_handling.h"
-
-enum class HandlerId
-{
-    Push = 0,
-    SpinLeft,
-    SpinRight,
-
-    Last
-};
 
 void ThrowGleErrorIfFalse (bool val, const char* msg, std::source_location location = std::source_location::current())
 {
@@ -46,39 +38,32 @@ void ThrowGleErrorIfFalse (bool val, const char* msg, std::source_location locat
     }
 }
 
-class Knob::Impl : public CWindowImpl<Impl, CWindow, CWinTraits<WS_POPUP>> 
+template <class CRTP>
+class HotkeyWindow : public CWindowImpl<HotkeyWindow<CRTP>, CWindow, CWinTraits<WS_POPUP>>
 {
 public:
     BEGIN_MSG_MAP(Impl)
         MESSAGE_HANDLER(WM_HOTKEY, OnHotKey)
     END_MSG_MAP()
 
-    Impl() 
+    HotkeyWindow()
     {
-        Create (nullptr);
-
-        try
-        {
-            ThrowGleErrorIfFalse (::RegisterHotKey(m_hWnd, static_cast<size_t>(HandlerId::Push),      0, VK_F20), "Hotkey 1 registaretion");
-            ThrowGleErrorIfFalse (::RegisterHotKey(m_hWnd, static_cast<size_t>(HandlerId::SpinLeft),  0, VK_F18), "Hotkey 2 registaretion");
-            ThrowGleErrorIfFalse (::RegisterHotKey(m_hWnd, static_cast<size_t>(HandlerId::SpinRight), 0, VK_F19), "Hotkey 3 registaretion");
-        }
-        catch(...)
-        {
-            // WTL needs this
-            DestroyWindow();
-            throw;
-        }
+        this->Create (nullptr);
     }
-
-    ~Impl() 
+    
+    ~HotkeyWindow()
     {
-        ::UnregisterHotKey(m_hWnd, static_cast<size_t>(HandlerId::Push));
-        ::UnregisterHotKey(m_hWnd, static_cast<size_t>(HandlerId::SpinLeft));
-        ::UnregisterHotKey(m_hWnd, static_cast<size_t>(HandlerId::SpinRight));
+        // WTL needs this
+        if (GetHwnd())
+            this->DestroyWindow();
     }
 
 public:
+    auto GetHwnd() const
+    {
+        return this->m_hWnd;
+    }
+
     void Loop()
     {
         // Run message loop
@@ -89,24 +74,67 @@ public:
             ::TranslateMessage(&msg);
             ::DispatchMessage(&msg);
         }
-    }
-
-    void SetHandler (HandlerId id, Handler handler)
-    {
-        m_handlers[static_cast<size_t>(id)] = std::move (handler);
     }   
 
 private:
     LRESULT OnHotKey (UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/) 
     {
-        const auto id = static_cast<size_t>(wParam);
-        if (id < static_cast<size_t>(HandlerId::Last))
-            IgnoreException (m_handlers[id]);
+        static_cast<CRTP*>(this)->OnHotKey (static_cast<size_t>(wParam));
         return 0;
+    }
+};
+
+enum class HandlerId
+{
+    Push = 0,
+    SpinLeft,
+    SpinRight,
+
+    Last
+};
+
+class Knob::Impl : public HotkeyWindow<Impl>
+{
+public:
+    void SetHandler (Handler handler, UINT vk, HandlerId id)
+    {
+        m_handlers[static_cast<size_t>(id)].emplace (std::move (handler), vk, static_cast<size_t> (id), GetHwnd());
+    }
+
+    void OnHotKey (size_t id) noexcept
+    {   
+        if (id < std::size (m_handlers) && m_handlers[id])
+            m_handlers[id]->Trigger();
     }
 
 private:
-    Knob::Handler m_handlers[static_cast<size_t>(HandlerId::Last)];    
+    struct HotKey
+    {
+    public:
+        explicit HotKey (Handler handler, UINT vk, size_t id, HWND hWnd):
+            m_handler {std::move (handler)}, m_id (id), m_hWnd {hWnd}
+        {
+            ThrowGleErrorIfFalse (::RegisterHotKey (m_hWnd, m_id, 0, vk), "Hotkey registretion");
+        }
+
+        ~HotKey()
+        {
+            ::UnregisterHotKey (m_hWnd, m_id);
+        }
+
+    public:
+        void Trigger() noexcept
+        {
+            IgnoreException (m_handler);
+        }
+
+    private:
+        const Handler m_handler;
+        const size_t  m_id;
+        const HWND    m_hWnd;
+    };
+
+    std::optional<HotKey> m_handlers[static_cast<size_t>(HandlerId::Last)];
 };
 
 Knob::Knob()
@@ -123,17 +151,17 @@ Knob::~Knob() = default;
 
 void Knob::SetPushHandler (Handler handler)
 {
-    m_impl->SetHandler (HandlerId::Push, std::move (handler));
+    m_impl->SetHandler (std::move (handler), VK_F20, HandlerId::Push);
 }
 
 void Knob::SetSpinLeftHandler (Handler handler)
 {
-    m_impl->SetHandler (HandlerId::SpinLeft, std::move (handler));
+    m_impl->SetHandler (std::move (handler), VK_F18, HandlerId::SpinLeft);
 }
 
 void Knob::SetSpinRightHandler (Handler handler)
 {
-    m_impl->SetHandler (HandlerId::SpinRight, std::move (handler));
+    m_impl->SetHandler (std::move (handler), VK_F19, HandlerId::SpinRight);
 }
 
 void Knob::Loop()
