@@ -3,14 +3,6 @@
 
 #include "error_handling.h"
 
-auto SwallowEveryTime (auto fun)
-{
-    return [fun = std::move (fun)]() noexcept
-        {
-            IgnoreException (fun);
-        };
-}
-
 int main()
 {
     const bool res = DispatchException (
@@ -19,21 +11,29 @@ int main()
             Mic mic;
             Knob knob;
 
-            knob.SetPushHandler (SwallowEveryTime(
+            const auto ignoreExceptions = [](auto fun)
+                {
+                    return [fun = std::move (fun)]() noexcept
+                        {
+                            IgnoreException (fun);
+                        };
+                };
+
+            knob.SetPushHandler (ignoreExceptions(
                 [&]()
                 {
                     mic.ToggleMute();
                 }
             ));
 
-            knob.SetSpinLeftHandler (SwallowEveryTime(
+            knob.SetSpinLeftHandler (ignoreExceptions(
                 [&]()
                 {
                     mic.DecVol();
                 }
             ));
 
-            knob.SetSpinRightHandler (SwallowEveryTime(
+            knob.SetSpinRightHandler (ignoreExceptions(
                 [&]()
                 {
                     mic.IncVol();
