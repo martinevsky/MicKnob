@@ -8,3 +8,4 @@ set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 
 file(GLOB SOURCES CONFIGURE_DEPENDS "*.cpp")
 add_executable(${PROJECT_NAME} ${SOURCES})
+set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
