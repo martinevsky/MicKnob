@@ -1,3 +1,4 @@
+#include "app.h"
 #include "mic.h"
 #include "knob.h"
 
@@ -8,6 +9,7 @@ int main()
     const bool res = DispatchException (
         []()
         {
+            App app;
             Mic mic;
             Knob knob;
 
@@ -40,7 +42,7 @@ int main()
                 }
             ));
 
-            knob.Loop();
+            app.Run();
        }
     );
  

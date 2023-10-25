@@ -64,18 +64,6 @@ public:
         return this->m_hWnd;
     }
 
-    void Loop()
-    {
-        // Run message loop
-        MSG msg;
-        while (const auto getMessageRes = ::GetMessage(&msg, nullptr, 0, 0)) 
-        {
-            ThrowGleErrorIfFalse (getMessageRes != -1, "GetMessage");
-            ::TranslateMessage(&msg);
-            ::DispatchMessage(&msg);
-        }
-    }   
-
 private:
     LRESULT OnHotKey (UINT /*uMsg*/, WPARAM wParam, LPARAM /*lParam*/, BOOL& /*bHandled*/) 
     {
@@ -162,9 +150,4 @@ void Knob::SetSpinLeftHandler (Handler handler)
 void Knob::SetSpinRightHandler (Handler handler)
 {
     m_impl->SetHandler (std::move (handler), VK_F19, HandlerId::SpinRight);
-}
-
-void Knob::Loop()
-{
-    m_impl->Loop();
 }
