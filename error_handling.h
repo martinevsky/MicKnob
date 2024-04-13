@@ -14,7 +14,7 @@ public:
     }
 
 public:
-    friend static std::ostream& operator<< (std::ostream&, const TraceableException&);
+    friend std::ostream& operator<< (std::ostream&, const TraceableException&);
 
 protected:
     virtual void Format (std::ostream&) const = 0;
