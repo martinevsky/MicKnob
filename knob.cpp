@@ -11,7 +11,7 @@
 
 void ThrowGleErrorIfFalse (bool val, const char* msg, std::source_location location = std::source_location::current())
 {
-    if (!val) [[unlikelly]]
+    if (!val) [[unlikely]]
     {
         struct GleError final : TraceableException
         {
